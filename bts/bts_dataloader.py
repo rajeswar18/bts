@@ -23,7 +23,7 @@ from PIL import Image
 import os
 import random
 
-from distributed_sampler_no_evenly_divisible import *
+from bts.distributed_sampler_no_evenly_divisible import DistributedSamplerNoEvenlyDivisible
 
 
 def _is_pil_image(img):

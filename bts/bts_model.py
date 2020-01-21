@@ -21,6 +21,10 @@ import math
 
 from collections import namedtuple
 
+if not torch.cuda.is_available():
+    device = torch.device('cpu')
+else:
+    device = torch.device(f'cuda')
 
 # This sets the batch norm layers in pytorch as if {'is_training': False, 'scale': True} in tensorflow
 def bn_init_as_tf(m):
@@ -137,10 +141,10 @@ class local_planar_guidance(nn.Module):
         n3 = plane_eq_expanded[:, 2, :, :]
         n4 = plane_eq_expanded[:, 3, :, :]
         
-        u = self.u.repeat(plane_eq.size(0), plane_eq.size(2) * int(self.upratio), plane_eq.size(3)).cuda()
+        u = self.u.repeat(plane_eq.size(0), plane_eq.size(2) * int(self.upratio), plane_eq.size(3)).to(device)
         u = (u - (self.upratio - 1) * 0.5) / self.upratio
         
-        v = self.v.repeat(plane_eq.size(0), plane_eq.size(2), plane_eq.size(3) * int(self.upratio)).cuda()
+        v = self.v.repeat(plane_eq.size(0), plane_eq.size(2), plane_eq.size(3) * int(self.upratio)).to(device)
         v = (v - (self.upratio - 1) * 0.5) / self.upratio
 
         return n4 / (n1 * u + n2 * v + n3)
