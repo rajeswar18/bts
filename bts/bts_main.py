@@ -36,7 +36,8 @@ from torch.autograd import Variable
 from torchvision.transforms import transforms
 from tqdm import tqdm
 
-from bts.bts_dataloader import BtsDataLoader
+from bts.bts_dataloader_128 import BtsDataLoader
+from bts.bts_dataloader_in import BtsDataLoaderIN
 from bts.bts_model import bn_init_as_tf, BtsModel, weights_init_xavier, silog_loss
 
 
@@ -156,7 +157,10 @@ parser.add_argument(
     '--use_right',
     help='if set, will randomly use right images when train on KITTI',
     action='store_true')
-
+parser.add_argument(
+    '--smol',
+    help='use 128x128 variant',
+    action='store_true')
 # Multi-gpu training
 parser.add_argument(
     '--num_threads',
@@ -475,6 +479,8 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         device = torch.device(f'cuda:{gpu}')
 
+    print("Using device:", device)
+
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
 
@@ -571,8 +577,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
     cudnn.benchmark = True
 
-    dataloader = BtsDataLoader(args, 'train')
-    dataloader_eval = BtsDataLoader(args, 'online_eval')
+    if args.dataset != "inet":
+        dataloader = BtsDataLoader(args, 'train')
+    else:
+        dataloader = BtsDataLoaderIN(args, 'train')
 
     # Logging
     if not args.multiprocessing_distributed or (
@@ -680,6 +688,9 @@ def main_worker(gpu, ngpus_per_node, args):
                     })
                     depth_gt = torch.where(depth_gt < 1e-3, depth_gt * 0 + 1e3,
                                            depth_gt)
+
+                    print("img device:", image.device)
+                    image2 = image.to(torch.device("cpu"))
                     for i in range(num_log_images):
                         wandb.log({
                             f'depth_gt/image/{i}':
@@ -714,7 +725,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                     caption="Label"),
                             f'image/image/{i}':
                                 wandb.Image(
-                                    inv_normalize(image[i, :, :, :]).data,
+                                    inv_normalize(image2[i, :, :, :]).data,
                                     caption="Label")
                         })
 
@@ -729,65 +740,65 @@ def main_worker(gpu, ngpus_per_node, args):
                     }
                     torch.save(
                         checkpoint, args.log_directory + '/' + args.model_name +
-                        '/model-{}'.format(global_step))
+                        '/model.pth')
 
-            if args.do_online_eval and global_step and global_step % args.eval_freq == 0 and not model_just_loaded:
-                time.sleep(0.1)
-                model.eval()
-                eval_measures = online_eval(model, dataloader_eval, gpu,
-                                            ngpus_per_node)
-                if eval_measures is not None:
-                    for i in range(9):
-                        wandb.log({eval_metrics[i]: eval_measures[i].cpu()})
-                        measure = eval_measures[i]
-                        is_best = False
-                        if i < 6 and measure < best_eval_measures_lower_better[
-                                i]:
-                            old_best = best_eval_measures_lower_better[i].item()
-                            best_eval_measures_lower_better[i] = measure.item()
-                            is_best = True
-                        elif i >= 6 and measure > best_eval_measures_higher_better[
-                                i - 6]:
-                            old_best = best_eval_measures_higher_better[
-                                i - 6].item()
-                            best_eval_measures_higher_better[
-                                i - 6] = measure.item()
-                            is_best = True
-                        if is_best:
-                            old_best_step = best_eval_steps[i]
-                            old_best_name = '/model-{}-best_{}_{:.5f}'.format(
-                                old_best_step, eval_metrics[i], old_best)
-                            model_path = args.log_directory + '/' + args.model_name + old_best_name
-                            if os.path.exists(model_path):
-                                command = 'rm {}'.format(model_path)
-                                os.system(command)
-                            best_eval_steps[i] = global_step
-                            model_save_name = '/model-{}-best_{}_{:.5f}'.format(
-                                global_step, eval_metrics[i], measure)
-                            print('New best for {}. Saving model: {}'.format(
-                                eval_metrics[i], model_save_name))
-                            checkpoint = {
-                                'global_step':
-                                    global_step,
-                                'model':
-                                    model.state_dict(),
-                                'optimizer':
-                                    optimizer.state_dict(),
-                                'best_eval_measures_higher_better':
-                                    best_eval_measures_higher_better,
-                                'best_eval_measures_lower_better':
-                                    best_eval_measures_lower_better,
-                                'best_eval_steps':
-                                    best_eval_steps
-                            }
-                            torch.save(
-                                checkpoint, args.log_directory + '/' +
-                                args.model_name + model_save_name)
-
-                model.train()
-                block_print()
-                set_misc(model)
-                enable_print()
+            # if args.do_online_eval and global_step and global_step % args.eval_freq == 0 and not model_just_loaded:
+            #     time.sleep(0.1)
+            #     model.eval()
+            #     eval_measures = online_eval(model, dataloader_eval, gpu,
+            #                                 ngpus_per_node)
+            #     if eval_measures is not None:
+            #         for i in range(9):
+            #             wandb.log({eval_metrics[i]: eval_measures[i].cpu()})
+            #             measure = eval_measures[i]
+            #             is_best = False
+            #             if i < 6 and measure < best_eval_measures_lower_better[
+            #                     i]:
+            #                 old_best = best_eval_measures_lower_better[i].item()
+            #                 best_eval_measures_lower_better[i] = measure.item()
+            #                 is_best = True
+            #             elif i >= 6 and measure > best_eval_measures_higher_better[
+            #                     i - 6]:
+            #                 old_best = best_eval_measures_higher_better[
+            #                     i - 6].item()
+            #                 best_eval_measures_higher_better[
+            #                     i - 6] = measure.item()
+            #                 is_best = True
+            #             if is_best:
+            #                 old_best_step = best_eval_steps[i]
+            #                 old_best_name = '/model-{}-best_{}_{:.5f}'.format(
+            #                     old_best_step, eval_metrics[i], old_best)
+            #                 model_path = args.log_directory + '/' + args.model_name + old_best_name
+            #                 if os.path.exists(model_path):
+            #                     command = 'rm {}'.format(model_path)
+            #                     os.system(command)
+            #                 best_eval_steps[i] = global_step
+            #                 model_save_name = '/model-{}-best_{}_{:.5f}'.format(
+            #                     global_step, eval_metrics[i], measure)
+            #                 print('New best for {}. Saving model: {}'.format(
+            #                     eval_metrics[i], model_save_name))
+            #                 checkpoint = {
+            #                     'global_step':
+            #                         global_step,
+            #                     'model':
+            #                         model.state_dict(),
+            #                     'optimizer':
+            #                         optimizer.state_dict(),
+            #                     'best_eval_measures_higher_better':
+            #                         best_eval_measures_higher_better,
+            #                     'best_eval_measures_lower_better':
+            #                         best_eval_measures_lower_better,
+            #                     'best_eval_steps':
+            #                         best_eval_steps
+            #                 }
+            #                 torch.save(
+            #                     checkpoint, args.log_directory + '/' +
+            #                     args.model_name + model_save_name)
+            #
+            #     model.train()
+            #     block_print()
+            #     set_misc(model)
+            #     enable_print()
 
             model_just_loaded = False
             global_step += 1
