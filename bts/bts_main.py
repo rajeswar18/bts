@@ -689,7 +689,6 @@ def main_worker(gpu, ngpus_per_node, args):
                     depth_gt = torch.where(depth_gt < 1e-3, depth_gt * 0 + 1e3,
                                            depth_gt)
 
-                    print("img device:", image.device)
                     image2 = image.to(torch.device("cpu"))
                     for i in range(num_log_images):
                         wandb.log({
