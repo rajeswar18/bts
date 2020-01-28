@@ -1,6 +1,6 @@
 import os
 
-PATH = "/Users/florian/intnet-bedrooms-png-sample/"
+PATH = "/data/fgolemo/intnet-bedrooms-png/"
 
 files = [x for x in os.listdir(PATH) if "-d.png" in x[-6:] or "-rgb.png" in x[-8:]]
 files.sort()

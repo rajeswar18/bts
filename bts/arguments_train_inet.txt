@@ -2,22 +2,22 @@
 --model_name bts_inet_pytorch_train
 --encoder densenet121_bts
 --dataset inet
---data_path /Users/florian/intnet-bedrooms-png-sample/
---gt_path /Users/florian/intnet-bedrooms-png-sample/
+--data_path /data/fgolemo/intnet-bedrooms-png
+--gt_path /data/fgolemo/intnet-bedrooms-png
 --filenames_file ../train_test_inputs/interiornet_train_files_with_gt.txt
 --filenames_file_eval ../train_test_inputs/interiornet_test_files_with_gt.txt
 --batch_size 4
 --num_epochs 50
 --learning_rate 1e-4
 --weight_decay 1e-2
---num_threads 1
+--num_threads 16
 --input_height 128
 --input_width 128
---max_depth 10
+--max_depth 50
 --do_random_rotate
 --degree 2.5
 --log_directory ./models/
---log_freq 1
 --dist_url tcp://127.0.0.1:2345
---gpu -1
+--gpu 0
 --smol
+
