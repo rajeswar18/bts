@@ -94,13 +94,16 @@ class DataLoadPreprocessIN(Dataset):
             depth_path = os.path.join(self.args.gt_path,
                                        sample_path.split()[1])
 
-            image = np.array(Image.open(image_path))[480 * frame_idx:480 *
-                                                     (frame_idx + 1), :, :]
+            image = np.array(Image.open(image_path))
+            # image = np.array(Image.open(image_path))[480 * frame_idx:480 *
+            #                                          (frame_idx + 1), :, :]
             depth_gt = np.array(
                 Image.open(depth_path),
-                dtype=np.float32)[480 * frame_idx:480 * (frame_idx + 1), :]
-            # print(image.shape, image.dtype)
-            # print(depth_gt.shape, depth_gt.dtype)
+                dtype=np.float32)
+            # depth_gt = np.array(
+            #     Image.open(depth_path),
+            #     dtype=np.float32)[480 * frame_idx:480 * (frame_idx + 1), :]
+            
 
             # # To avoid blank boundaries due to pixel registration
             # depth_gt = depth_gt.crop((43, 45, 608, 472)) # FIXME
@@ -111,10 +114,10 @@ class DataLoadPreprocessIN(Dataset):
 
             if self.args.smol:
                 image = rescale(
-                    image, 0.27, anti_aliasing=False,
+                    image, 1.0, anti_aliasing=False,
                     multichannel=True).astype(np.float32)
                 depth_gt = rescale(
-                    depth_gt, 0.27, anti_aliasing=False,
+                    depth_gt, 1.0, anti_aliasing=False,
                     multichannel=True).astype(np.float32)
 
             image, depth_gt = self.random_crop(image, depth_gt,
